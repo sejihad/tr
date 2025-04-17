@@ -4,18 +4,18 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Voice Translator</title>
+    <title>10s Voice Translator</title>
 </head>
 
 <body>
-    <h2>🎤 Speak in Bengali & Get English Voice Output</h2>
-    <button onclick="startRecognition()">Start Listening</button>
+    <h2>🎤 Speak Bengali for 10 Seconds</h2>
+    <button onclick="startRecognition()">Start Recording (10s)</button>
     <p><strong>Recognized (BN):</strong> <span id="bnText"></span></p>
     <p><strong>Translated (EN):</strong> <span id="enText"></span></p>
     <audio id="audioOutput" controls></audio>
 
     <script>
-        const apiKey = 'AIzaSyAb_LZ2HdM2kfbNuVsXPWnBkI_3Zi2UiLA'; // 🔑 Replace with your real Google API key
+        const apiKey = 'YOUR_API_KEY'; // 🔑 Replace with your real Google API key
 
         function startRecognition() {
             const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
@@ -24,6 +24,11 @@
             recognition.maxAlternatives = 1;
 
             recognition.start();
+
+            // Stop recognition after 10 seconds
+            setTimeout(() => {
+                recognition.stop();
+            }, 10000); // 10000ms = 10s
 
             recognition.onresult = async (event) => {
                 const transcript = event.results[0][0].transcript;
