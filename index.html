@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>10s Voice Translator</title>
+    <title>Human-like Voice Translator</title>
 </head>
 
 <body>
@@ -15,7 +15,7 @@
     <audio id="audioOutput" controls></audio>
 
     <script>
-        const apiKey = 'YOUR_API_KEY'; // 🔑 Replace with your real Google API key
+        const apiKey = 'YOUR_API_KEY'; // 🔑 তোমার Google API Key এখানে বসাও
 
         function startRecognition() {
             const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
@@ -25,16 +25,16 @@
 
             recognition.start();
 
-            // Stop recognition after 10 seconds
+            // 10 সেকেন্ড পর অটো স্টপ
             setTimeout(() => {
                 recognition.stop();
-            }, 10000); // 10000ms = 10s
+            }, 10000);
 
             recognition.onresult = async (event) => {
                 const transcript = event.results[0][0].transcript;
                 document.getElementById("bnText").innerText = transcript;
 
-                // Translate
+                // 🔁 Google Translate API
                 const translation = await fetch(`https://translation.googleapis.com/language/translate/v2?key=${apiKey}`, {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
@@ -49,14 +49,21 @@
                 const translatedText = translation.data.translations[0].translatedText;
                 document.getElementById("enText").innerText = translatedText;
 
-                // Text to Speech
+                // 🔊 Google Text-to-Speech API (WaveNet Voice)
                 const ttsRes = await fetch(`https://texttospeech.googleapis.com/v1/text:synthesize?key=${apiKey}`, {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({
                         input: { text: translatedText },
-                        voice: { languageCode: "en-US", ssmlGender: "FEMALE" },
-                        audioConfig: { audioEncoding: "MP3" }
+                        voice: {
+                            languageCode: "en-US",
+                            name: "en-US-Wavenet-F" // ✅ Human-like female voice
+                        },
+                        audioConfig: {
+                            audioEncoding: "MP3",
+                            speakingRate: 1.0,
+                            pitch: 0.0
+                        }
                     }),
                 }).then(res => res.json());
 
