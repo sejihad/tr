@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Voice Translator</title>
+</head>
+
+<body>
+    <h2>🎤 Speak in Bengali & Get English Voice Output</h2>
+    <button onclick="startRecognition()">Start Listening</button>
+    <p><strong>Recognized (BN):</strong> <span id="bnText"></span></p>
+    <p><strong>Translated (EN):</strong> <span id="enText"></span></p>
+    <audio id="audioOutput" controls></audio>
+
+    <script>
+        const apiKey = 'AIzaSyAb_LZ2HdM2kfbNuVsXPWnBkI_3Zi2UiLA'; // 🔑 Replace with your real Google API key
+
+        function startRecognition() {
+            const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+            recognition.lang = 'bn-BD';
+            recognition.interimResults = false;
+            recognition.maxAlternatives = 1;
+
+            recognition.start();
+
+            recognition.onresult = async (event) => {
+                const transcript = event.results[0][0].transcript;
+                document.getElementById("bnText").innerText = transcript;
+
+                // Translate
+                const translation = await fetch(`https://translation.googleapis.com/language/translate/v2?key=${apiKey}`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        q: transcript,
+                        source: "bn",
+                        target: "en",
+                        format: "text",
+                    }),
+                }).then(res => res.json());
+
+                const translatedText = translation.data.translations[0].translatedText;
+                document.getElementById("enText").innerText = translatedText;
+
+                // Text to Speech
+                const ttsRes = await fetch(`https://texttospeech.googleapis.com/v1/text:synthesize?key=${apiKey}`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        input: { text: translatedText },
+                        voice: { languageCode: "en-US", ssmlGender: "FEMALE" },
+                        audioConfig: { audioEncoding: "MP3" }
+                    }),
+                }).then(res => res.json());
+
+                const audio = document.getElementById("audioOutput");
+                audio.src = "data:audio/mp3;base64," + ttsRes.audioContent;
+                audio.play();
+            };
+
+            recognition.onerror = (err) => {
+                console.error("Speech recognition error", err);
+                alert("Error: " + err.error);
+            };
+        }
+    </script>
+</body>
+
+</html>
