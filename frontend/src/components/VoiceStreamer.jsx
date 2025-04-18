@@ -1,7 +1,7 @@
 import React, { useEffect, useRef } from "react";
 import io from "socket.io-client";
 
-const socket = io(process.env.REACT_APP_BACKEND_URL);
+const socket = io("https://tr-api-m7yy.onrender.com");
 
 function VoiceStreamer({ roomId }) {
   const mediaRecorderRef = useRef(null);
