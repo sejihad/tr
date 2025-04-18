@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from "react";
 import io from "socket.io-client";
 import { v4 as uuidv4 } from "uuid";
 
-const socket = io("https://tr-api-m7yy.onrender.com");
+const socket = io("https://tr-api-q1pd.onrender.com");
 
 function CreateRoom({ onCreate }) {
   const handleCreate = () => {
