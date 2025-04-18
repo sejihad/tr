@@ -2,58 +2,40 @@ import React, { useEffect, useRef, useState } from "react";
 import io from "socket.io-client";
 import { v4 as uuidv4 } from "uuid";
 
-const socket = io("https://tr-api-q1pd.onrender.com");
+const socket = io("https://tr-api-m7yy.onrender.com");
 
-function CreateRoom({ onCreate }) {
-  const handleCreate = () => {
-    const id = uuidv4();
-    onCreate(id);
-  };
-
-  return <button onClick={handleCreate}>📞 Create Meeting</button>;
-}
-
-function JoinRoom({ onJoin }) {
-  const [roomId, setRoomId] = useState("");
-
-  const handleJoin = () => {
-    if (roomId.trim()) {
-      onJoin(roomId.trim());
-    }
-  };
-
-  return (
-    <div>
-      <input
-        type="text"
-        placeholder="Enter Meeting ID"
-        value={roomId}
-        onChange={(e) => setRoomId(e.target.value)}
-      />
-      <button onClick={handleJoin}>✅ Join</button>
-    </div>
-  );
-}
-
-function VoiceStreamer({ roomId }) {
+function App() {
+  const [roomId, setRoomId] = useState(null);
+  const [joinId, setJoinId] = useState("");
   const mediaRecorderRef = useRef(null);
 
   useEffect(() => {
+    if (!roomId) return;
+
     socket.emit("join-room", roomId);
+    console.log("🔗 Joined room:", roomId);
 
     socket.on("translated-audio", (audioBase64) => {
-      const audio = new Audio(`data:audio/mp3;base64,${audioBase64}`);
-      audio.play();
+      try {
+        const audioBlob = new Blob(
+          [Uint8Array.from(atob(audioBase64), (c) => c.charCodeAt(0))],
+          { type: "audio/mp3" }
+        );
+        const audioUrl = URL.createObjectURL(audioBlob);
+        const audio = new Audio(audioUrl);
+        audio.play();
+      } catch (err) {
+        console.error("🔇 Audio playback failed:", err.message);
+      }
     });
 
-    // Request for microphone permission and start recording
     navigator.mediaDevices
       .getUserMedia({ audio: true })
       .then((stream) => {
         const mediaRecorder = new MediaRecorder(stream);
         mediaRecorderRef.current = mediaRecorder;
 
-        mediaRecorder.ondataavailable = async (e) => {
+        mediaRecorder.ondataavailable = (e) => {
           if (e.data.size > 0) {
             const reader = new FileReader();
             reader.onloadend = () => {
@@ -64,10 +46,10 @@ function VoiceStreamer({ roomId }) {
           }
         };
 
-        mediaRecorder.start(3000); // every 3s send chunk
+        mediaRecorder.start(3000);
       })
       .catch((err) => {
-        console.error("Permission denied or error occurred", err);
+        console.error("🎤 Mic permission error:", err.message);
       });
 
     return () => {
@@ -76,26 +58,35 @@ function VoiceStreamer({ roomId }) {
     };
   }, [roomId]);
 
-  return (
-    <div>
-      <h3>🔊 You are in room: {roomId}</h3>
-      <p>Start speaking! Real-time translation will stream to other user.</p>
-    </div>
-  );
-}
+  const handleCreate = () => {
+    const id = uuidv4();
+    setRoomId(id);
+  };
 
-function App() {
-  const [roomId, setRoomId] = useState(null);
+  const handleJoin = () => {
+    if (joinId.trim()) setRoomId(joinId.trim());
+  };
 
   return (
     <div style={{ textAlign: "center", marginTop: 50 }}>
       {!roomId ? (
         <>
-          <CreateRoom onCreate={setRoomId} />
-          <JoinRoom onJoin={setRoomId} />
+          <button onClick={handleCreate}>📞 Create Meeting</button>
+          <br />
+          <br />
+          <input
+            type="text"
+            placeholder="Enter Meeting ID"
+            value={joinId}
+            onChange={(e) => setJoinId(e.target.value)}
+          />
+          <button onClick={handleJoin}>✅ Join</button>
         </>
       ) : (
-        <VoiceStreamer roomId={roomId} />
+        <div>
+          <h3>🔊 You are in room: {roomId}</h3>
+          <p>Start speaking! Translated voice will play in real-time.</p>
+        </div>
       )}
     </div>
   );
