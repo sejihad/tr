@@ -1,57 +1,46 @@
-require("dotenv").config();
-const express = require("express");
-const http = require("http");
-const cors = require("cors");
-const { Server } = require("socket.io");
-const { handleTranslateStream } = require("./translationHandler.js");
+import cors from "cors";
+import dotenv from "dotenv";
+import express from "express";
+import http from "http";
+import { Server } from "socket.io";
+import speechToText from "./services/speechToText.js";
+import textToSpeech from "./services/textToSpeech.js";
+import translateText from "./services/translateText.js";
+
+dotenv.config();
 
 const app = express();
 app.use(cors());
+app.use(express.json({ limit: "50mb" }));
 
 const server = http.createServer(app);
 const io = new Server(server, {
   cors: {
     origin: "*",
-    methods: ["GET", "POST"],
   },
 });
 
-let users = [];
-
 io.on("connection", (socket) => {
-  console.log("User connected:", socket.id);
-  users.push(socket);
+  console.log("✅ User connected:", socket.id);
 
-  socket.on("offer", ({ offer }) => {
-    const receiver = users.find((u) => u.id !== socket.id);
-    if (receiver) receiver.emit("offer", { offer });
+  socket.on("join-room", (roomId) => {
+    socket.join(roomId);
+    console.log(`User ${socket.id} joined room ${roomId}`);
   });
 
-  socket.on("answer", ({ answer }) => {
-    const caller = users.find((u) => u.id !== socket.id);
-    if (caller) caller.emit("answer", { answer });
-  });
-
-  socket.on("ice-candidate", ({ candidate }) => {
-    const other = users.find((u) => u.id !== socket.id);
-    if (other) other.emit("ice-candidate", { candidate });
-  });
-
-  socket.on("audio-chunk", async ({ audioBuffer }) => {
-    const translatedAudio = await handleTranslateStream(
-      Buffer.from(audioBuffer)
-    );
-    if (translatedAudio) {
-      const receiver = users.find((u) => u.id !== socket.id);
-      if (receiver) {
-        receiver.emit("translated-audio", { audioBuffer: translatedAudio });
-      }
+  socket.on("audio", async ({ roomId, audioContent }) => {
+    try {
+      const text = await speechToText(audioContent);
+      const translated = await translateText(text, "en");
+      const audioResponse = await textToSpeech(translated);
+      socket.to(roomId).emit("translated-audio", audioResponse);
+    } catch (err) {
+      console.error("❌ Error:", err.message);
     }
   });
 
   socket.on("disconnect", () => {
-    console.log("User disconnected:", socket.id);
-    users = users.filter((u) => u.id !== socket.id);
+    console.log("❌ User disconnected:", socket.id);
   });
 });
 
