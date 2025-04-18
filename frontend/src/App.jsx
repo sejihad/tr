@@ -1,7 +1,7 @@
 import React, { useEffect, useRef } from "react";
 import io from "socket.io-client";
 
-const socket = io("https://your-backend-url.onrender.com"); // 🔁 Replace with your backend URL
+const socket = io("https://tr-api-hgkx.onrender.com"); // 🔁 Replace with your backend URL
 
 function App() {
   const mediaRecorderRef = useRef(null);
