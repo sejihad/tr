@@ -7,7 +7,7 @@ function App() {
   const navigate = useNavigate(); // useNavigate হুক ব্যবহার করুন
 
   const handleCreateRoom = () => {
-    fetch("http://localhost:5000/create-room")
+    fetch("https://tr-api-wpt2.onrender.com/create-room")
       .then((res) => res.text())
       .then((id) => {
         setRoomId(id);

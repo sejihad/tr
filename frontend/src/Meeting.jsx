@@ -10,7 +10,7 @@ const Meeting = () => {
   const [isAudioEnabled, setIsAudioEnabled] = useState(true);
 
   useEffect(() => {
-    socket.current = io("http://localhost:5000");
+    socket.current = io("https://tr-api-wpt2.onrender.com");
 
     navigator.mediaDevices
       .getUserMedia({ audio: true, video: false })
