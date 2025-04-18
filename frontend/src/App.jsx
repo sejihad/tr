@@ -1,26 +1,24 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef } from "react";
 import io from "socket.io-client";
-import { v4 as uuidv4 } from "uuid";
 
-const socket = io("https://tr-api-tki6.onrender.com");
+const socket = io("https://your-backend-url.onrender.com"); // 🔁 Replace with your backend URL
 
 function App() {
-  const [roomId, setRoomId] = useState(null);
-  const [joinId, setJoinId] = useState("");
   const mediaRecorderRef = useRef(null);
+  const audioChunksRef = useRef([]);
 
   useEffect(() => {
-    if (!roomId) return;
-
-    socket.emit("join-room", roomId);
-    console.log("🔗 Joined room:", roomId);
+    socket.emit("join-room", "myroom");
 
     socket.on("translated-audio", (audioBase64) => {
       try {
-        const audioBlob = new Blob(
-          [Uint8Array.from(atob(audioBase64), (c) => c.charCodeAt(0))],
-          { type: "audio/mp3" }
-        );
+        const binaryString = window.atob(audioBase64);
+        const len = binaryString.length;
+        const bytes = new Uint8Array(len);
+        for (let i = 0; i < len; i++) {
+          bytes[i] = binaryString.charCodeAt(i);
+        }
+        const audioBlob = new Blob([bytes], { type: "audio/mp3" });
         const audioUrl = URL.createObjectURL(audioBlob);
         const audio = new Audio(audioUrl);
         audio.play();
@@ -29,65 +27,54 @@ function App() {
       }
     });
 
-    navigator.mediaDevices
-      .getUserMedia({ audio: true })
-      .then((stream) => {
-        const mediaRecorder = new MediaRecorder(stream);
-        mediaRecorderRef.current = mediaRecorder;
+    const startRecording = async () => {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({
+          audio: true,
+        });
+        mediaRecorderRef.current = new MediaRecorder(stream);
 
-        mediaRecorder.ondataavailable = (e) => {
-          if (e.data.size > 0) {
-            const reader = new FileReader();
-            reader.onloadend = () => {
-              const base64Audio = reader.result.split(",")[1];
-              socket.emit("audio", { roomId, audioContent: base64Audio });
-            };
-            reader.readAsDataURL(e.data);
-          }
+        mediaRecorderRef.current.ondataavailable = (e) => {
+          audioChunksRef.current.push(e.data);
         };
 
-        mediaRecorder.start(3000);
-      })
-      .catch((err) => {
-        console.error("🎤 Mic permission error:", err.message);
-      });
+        mediaRecorderRef.current.onstop = async () => {
+          const audioBlob = new Blob(audioChunksRef.current, {
+            type: "audio/wav",
+          });
+          audioChunksRef.current = [];
+          const arrayBuffer = await audioBlob.arrayBuffer();
+          const uint8Array = new Uint8Array(arrayBuffer);
 
-    return () => {
-      if (mediaRecorderRef.current) mediaRecorderRef.current.stop();
-      socket.disconnect();
+          socket.emit("audio", {
+            roomId: "myroom",
+            audioContent: Array.from(uint8Array),
+          });
+        };
+
+        setInterval(() => {
+          if (
+            mediaRecorderRef.current &&
+            mediaRecorderRef.current.state === "recording"
+          ) {
+            mediaRecorderRef.current.stop();
+            mediaRecorderRef.current.start();
+          }
+        }, 4000);
+
+        mediaRecorderRef.current.start();
+      } catch (err) {
+        console.error("🎙️ Microphone error:", err.message);
+      }
     };
-  }, [roomId]);
 
-  const handleCreate = () => {
-    const id = uuidv4();
-    setRoomId(id);
-  };
-
-  const handleJoin = () => {
-    if (joinId.trim()) setRoomId(joinId.trim());
-  };
+    startRecording();
+  }, []);
 
   return (
-    <div style={{ textAlign: "center", marginTop: 50 }}>
-      {!roomId ? (
-        <>
-          <button onClick={handleCreate}>📞 Create Meeting</button>
-          <br />
-          <br />
-          <input
-            type="text"
-            placeholder="Enter Meeting ID"
-            value={joinId}
-            onChange={(e) => setJoinId(e.target.value)}
-          />
-          <button onClick={handleJoin}>✅ Join</button>
-        </>
-      ) : (
-        <div>
-          <h3>🔊 You are in room: {roomId}</h3>
-          <p>Start speaking! Translated voice will play in real-time.</p>
-        </div>
-      )}
+    <div style={{ textAlign: "center", marginTop: "50px" }}>
+      <h2>🔁 Real-time Voice Translator (Bengali to English)</h2>
+      <p>Speak something in Bengali… it’ll speak back in English.</p>
     </div>
   );
 }
